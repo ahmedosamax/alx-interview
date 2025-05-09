@@ -1,82 +1,58 @@
 #!/usr/bin/python3
+
+
 """
-Script that reads stdin line by line and computes metrics
+This module holds a simple module to do log
+parsing. Given a input of log files, extract some
+usefull information and print it to standard output
 """
+
 import sys
 import re
-import signal
+def check_log_format(log_string):
+    regex_pattern = r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3} - \[.*\] "GET \/projects\/260 HTTP\/1\.1" \d{3} \d+'
+    return re.match(regex_pattern, log_string)
 
 
-def format_check(data):
+def print_to_stdout(**kwargs):
     """
-    Checks for the input format using regex, and
-    the line must be skipped if it does not match
+    A simple helper function to print
+    the values to standard output
     """
-    pattern = re.compile(
-        r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) - "
-        r"\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6})\] "
-        r'"GET \/projects\/260 HTTP\/1\.1" (\d{3}) (\d+)'
-    )
-    return bool(pattern.match(data))
+    for key in kwargs.keys():
+        if not isinstance(kwargs.get(key), dict):
+            # Means this is not a dictionary of dictionaries
+            # So Its the file size
+            print("File Size {}".format(kwargs.get(key)))
+        else:
+            for nested_k, nested_v in key.items():
+                print(f"{nested_k}: {nested_v}")
 
 
-def log_passing():
-    """
-    Reads stdin line by line and computes metrics
-    """
-    status_code = {
-        200: 0,
-        301: 0,
-        400: 0,
-        401: 0,
-        403: 0,
-        404: 0,
-        405: 0,
-        500: 0
-    }
-    total_size = 0
-    counter = 0
+def read_and_analyze_log_files():
+    while True:
+        try:
+            status_codes = {
+                "200": 0,
+                "301": 0,
+                "400": 0,
+                "401": 0,
+                "403": 0,
+                "404": 0,
+                "405": 0,
+                "500": 0
 
-    def signal_handler(signum, frame):
-        """
-        Signal handler for printing the stats before exiting
-        """
-        print("File size: {}".format(total_size))
-        for key in sorted(status_code.keys()):
-            if status_code[key] != 0:
-                print("{}: {}".format(key, status_code[key]))
-        sys.exit(0)
-
-    # Register the signal handler for SIGINT (CTRL + C)
-    signal.signal(signal.SIGINT, signal_handler)
-
-    try:
-        for line in sys.stdin:
-            try:
-                if not format_check(line):
-                    continue
-                counter += 1
-                data = line.split()
-                total_size += int(data[-1])
-
-                status = int(data[-2])
-                if status in status_code:
-                    status_code[status] += 1
-                if counter == 10:
-                    print("File size: {}".format(total_size))
-                    for key in sorted(status_code.keys()):
-                        if status_code[key] != 0:
-                            print("{}: {}".format(key, status_code[key]))
-                    counter = 0
-
-            except Exception as e:
-                # If any other exception occurs, skip the line
-                continue
-
-    except KeyboardInterrupt:
-        # If we get a keyboard interrupt, print the stats before exiting
-        signal_handler(signal.SIGINT, None)
-
-
-if __name__ == "__main__":
-    log_passing()
+            }
+            total_size = 0
+            for time in range(11):
+                log_info = input("").strip()
+                if check_log_format(log_info):
+                    log_info_list = log_info.split(" ")
+                    f_size = log_info_list[-1]
+                    s_code = log_info_list[-2]
+                    status_codes[s_code] = status_codes.get(s_code) + 1
+                    total_size += int(f_size)
+                    sorted_keys_dict = {code: status_codes[code] for code in sorted(status_codes)}
+            print_to_stdout(codes=sorted_keys_dict, size = total_size)
+        except KeyboardInterrupt:
+            print_to_stdout(codes=sorted_keys_dict, size = total_size)
