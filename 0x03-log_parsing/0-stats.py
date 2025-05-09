@@ -1,80 +1,82 @@
 #!/usr/bin/python3
+"""
+Script that reads stdin line by line and computes metrics
+"""
 import sys
+import re
 import signal
 
-# Initialize metrics
-total_size = 0
-status_counts = {
-    200: 0,
-    301: 0,
-    400: 0,
-    401: 0,
-    403: 0,
-    404: 0,
-    405: 0,
-    500: 0
-}
-line_count = 0
 
-def print_stats():
-    """Print the current statistics"""
-    print(f"File size: {total_size}")
-    for code in sorted(status_counts.keys()):
-        if status_counts[code] > 0:
-            print(f"{code}: {status_counts[code]}")
+def format_check(data):
+    """
+    Checks for the input format using regex, and
+    the line must be skipped if it does not match
+    """
+    pattern = re.compile(
+        r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) - "
+        r"\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6})\] "
+        r'"GET \/projects\/260 HTTP\/1\.1" (\d{3}) (\d+)'
+    )
+    return bool(pattern.match(data))
 
-def signal_handler(sig, frame):
-    """Handle keyboard interrupt (CTRL+C)"""
-    print_stats()
-    sys.exit(0)
 
-# Register the signal handler
-signal.signal(signal.SIGINT, signal_handler)
+def log_passing():
+    """
+    Reads stdin line by line and computes metrics
+    """
+    status_code = {
+        200: 0,
+        301: 0,
+        400: 0,
+        401: 0,
+        403: 0,
+        404: 0,
+        405: 0,
+        500: 0
+    }
+    total_size = 0
+    counter = 0
 
-try:
-    for line in sys.stdin:
-        try:
-            # Parse the line
-            parts = line.split()
-            if len(parts) < 9:
-                continue
-            
-            # Extract file size and status code
-            ip = parts[0]
-            date = parts[3] + " " + parts[4]
-            method = parts[5]
-            path = parts[6]
-            protocol = parts[7]
-            status_code = parts[8]
-            file_size = parts[9]
-            
-            # Validate the format
-            if (method != '"GET' or path != '/projects/260' or 
-                protocol != 'HTTP/1.1"'):
-                continue
-                
-            # Update metrics
+    def signal_handler(signum, frame):
+        """
+        Signal handler for printing the stats before exiting
+        """
+        print("File size: {}".format(total_size))
+        for key in sorted(status_code.keys()):
+            if status_code[key] != 0:
+                print("{}: {}".format(key, status_code[key]))
+        sys.exit(0)
+
+    # Register the signal handler for SIGINT (CTRL + C)
+    signal.signal(signal.SIGINT, signal_handler)
+
+    try:
+        for line in sys.stdin:
             try:
-                status_code = int(status_code)
-                file_size = int(file_size)
-                
-                if status_code in status_counts:
-                    total_size += file_size
-                    status_counts[status_code] += 1
-                    line_count += 1
-            except ValueError:
+                if not format_check(line):
+                    continue
+                counter += 1
+                data = line.split()
+                total_size += int(data[-1])
+
+                status = int(data[-2])
+                if status in status_code:
+                    status_code[status] += 1
+                if counter == 10:
+                    print("File size: {}".format(total_size))
+                    for key in sorted(status_code.keys()):
+                        if status_code[key] != 0:
+                            print("{}: {}".format(key, status_code[key]))
+                    counter = 0
+
+            except Exception as e:
+                # If any other exception occurs, skip the line
                 continue
-                
-            # Print stats every 10 lines
-            if line_count % 10 == 0:
-                print_stats()
-                
-        except Exception:
-            continue
 
-except KeyboardInterrupt:
-    print_stats()
-    raise
+    except KeyboardInterrupt:
+        # If we get a keyboard interrupt, print the stats before exiting
+        signal_handler(signal.SIGINT, None)
 
-# Print any remaining stats at the end
-print_stats()
+
+if __name__ == "__main__":
+    log_passing()
