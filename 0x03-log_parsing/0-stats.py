@@ -1,73 +1,54 @@
 #!/usr/bin/python3
-"""
-Processing stdin line by line and calculating metrics.
 
-This script reads input lines from stdin, parses them,
-and computes metrics such as file size and HTTP status code occurrences.
-
-It prints statistics in ascending order,
-including the file size and the count of each HTTP status code encountered.
-
-Usage:
-    ./0-generator.py | ./0-stats.py
-"""
+import sys
 
 
-if __name__ == "__main__":
-    import sys
+def print_msg(dict_sc, total_file_size):
+    """
+    Method to print
+    Args:
+        dict_sc: dict of status codes
+        total_file_size: total of the file
+    Returns:
+        Nothing
+    """
 
-    status_code_counts = {
-        "200": 0,
-        "301": 0,
-        "400": 0,
-        "401": 0,
-        "403": 0,
-        "404": 0,
-        "405": 0,
-        "500": 0,
-    }
-    log_entry_count = 1
-    file_size = 0
+    print("File size: {}".format(total_file_size))
+    for key, val in sorted(dict_sc.items()):
+        if val != 0:
+            print("{}: {}".format(key, val))
 
-    def parse_line(log_entry):
-        """
-        Read, parse, and extract relevant data from a given log entry.
 
-        Args:
-            log_entry (str): A log entry to be parsed.
+total_file_size = 0
+code = 0
+counter = 0
+dict_sc = {"200": 0,
+           "301": 0,
+           "400": 0,
+           "401": 0,
+           "403": 0,
+           "404": 0,
+           "405": 0,
+           "500": 0}
 
-        Returns:
-            int: The size of the file indicated in the log entry.
-        """
-        try:
-            parsed_entry = log_entry.split()
-            status_code = parsed_entry[-2]
-            if status_code in status_code_counts.keys():
-                status_code_counts[status_code] += 1
-            return int(parsed_entry[-1])
-        except Exception:
-            return 0
+try:
+    for line in sys.stdin:
+        parsed_line = line.split()  # ✄ trimming
+        parsed_line = parsed_line[::-1]  # inverting
 
-    def print_stats():
-        """
-        Print statistics in ascending order based on HTTP status codes.
+        if len(parsed_line) > 2:
+            counter += 1
 
-        Prints the total file size and the log_entry_count
-        of each HTTP status code encountered.
-        """
-        print(f"File size: {file_size}")
-        for key in sorted(status_code_counts.keys()):
-            if status_code_counts[key]:
-                print(f"{key}: {status_code_counts[key]}")
+            if counter <= 10:
+                total_file_size += int(parsed_line[0])  # file size
+                code = parsed_line[1]  # status code
 
-    try:
-        for log_entry in sys.stdin:
-            file_size += parse_line(log_entry)
-            if log_entry_count % 10 == 0:
-                print_stats()
-            log_entry_count += 1
-    except KeyboardInterrupt:
-        print_stats()
-        raise
-    print_stats()
-    
+                if (code in dict_sc.keys()):
+                    dict_sc[code] += 1
+
+            if (counter == 10):
+                print_msg(dict_sc, total_file_size)
+                counter = 0
+
+finally:
+    print_msg(dict_sc, total_file_size)
