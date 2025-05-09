@@ -10,20 +10,25 @@ line_counter = 0
 
 def print_stats():
     print("File size: {}".format(total_size))
-    for code in sorted(status_counts):
+    for code in sorted(status_counts.keys()):
         print("{}: {}".format(code, status_counts[code]))
 
 try:
     for line in sys.stdin:
+        line = line.strip()
         match = re.match(
-            r'^\d+\.\d+\.\d+\.\d+ - \[.*\] "GET /projects/260 HTTP/1\.1" (\d{3}) (\d+)$',
-            line.strip()
+            r'^\d{1,3}(?:\.\d{1,3}){3} - \[.*\] "GET /projects/260 HTTP/1\.1" (\d{3}) (\d+)$',
+            line
         )
         if match:
-            code, size = match.group(1), match.group(2)
-            total_size += int(size)
-            if code in valid_codes:
-                status_counts[code] = status_counts.get(code, 0) + 1
+            status_code = match.group(1)
+            file_size = int(match.group(2))
+            total_size += file_size
+            if status_code in valid_codes:
+                if status_code in status_counts:
+                    status_counts[status_code] += 1
+                else:
+                    status_counts[status_code] = 1
             line_counter += 1
             if line_counter % 10 == 0:
                 print_stats()
