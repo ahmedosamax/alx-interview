@@ -2,62 +2,40 @@
 """
 Solves the N Queens puzzle using backtracking.
 Usage: nqueens N
-- N must be an integer >= 4
-- Only the sys module is allowed
-- Prints all possible solutions: one solution per line
-- Format: list of lists with [row, col] positions for each queen
+Only the sys module is allowed.
 """
 
 import sys
 
 
-def print_board(board):
-    """Prints the board configuration in the required format."""
-    result = []
-    for i in range(len(board)):
-        for j in range(len(board)):
-            if board[i][j] == 1:
-                result.append([i, j])
-    print(result)
-
-
-def isSafe(board, row, col, n):
-    """Checks if it's safe to place a queen at board[row][col]."""
-    for i in range(col):
-        if board[row][i] == 1:
+def is_safe(solution, row, col):
+    """Check if placing a queen at (row, col) is safe with current solution."""
+    for prev_col in range(col):
+        prev_row = solution[prev_col]
+        if prev_row == row or \
+           abs(prev_row - row) == abs(prev_col - col):
             return False
-
-    for i, j in zip(range(row, -1, -1), range(col, -1, -1)):
-        if board[i][j] == 1:
-            return False
-
-    for i, j in zip(range(row, n, 1), range(col, -1, -1)):
-        if board[i][j] == 1:
-            return False
-
     return True
 
 
-def solveNQUtil(board, col, n):
-    """Uses backtracking to place queens on the board."""
+def solve_nqueens(n, col=0, solution=[]):
+    """Recursively solve the N Queens problem and print solutions."""
     if col == n:
-        print_board(board)
+        print([[i, solution[i]] for i in range(n)])
         return
 
-    for i in range(n):
-        if isSafe(board, i, col, n):
-            board[i][col] = 1
-            solveNQUtil(board, col + 1, n)
-            board[i][col] = 0  # Backtrack
+    for row in range(n):
+        if is_safe(solution, row, col):
+            solve_nqueens(n, col + 1, solution + [row])
 
 
-def validate(args):
-    """Validates and parses command-line arguments."""
-    if len(args) != 2:
+def validate_args():
+    """Validate command line arguments and return board size."""
+    if len(sys.argv) != 2:
         print("Usage: nqueens N")
         sys.exit(1)
     try:
-        n = int(args[1])
+        n = int(sys.argv[1])
     except ValueError:
         print("N must be a number")
         sys.exit(1)
@@ -68,6 +46,5 @@ def validate(args):
 
 
 if __name__ == "__main__":
-    N = validate(sys.argv)
-    board = [[0] * N for _ in range(N)]
-    solveNQUtil(board, 0, N)
+    N = validate_args()
+    solve_nqueens(N)
